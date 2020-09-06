@@ -1,9 +1,10 @@
 # TranfficLightSystem-VHDL-
 
 ***A VHDL program to simulate Traffic Light System***
-
+***IDE ModelSim- Intel FPGA STARTER Edition***
+***Language VHDL**** 
 **This system includes 9 states: IDLE + S0+S1...S7**
-
+***Group Member: Yixuan Liang, Rui Sun, and Xuchen Sun***
 IDLE state is for installing this system.
 S0 to S7 is for loop
 
