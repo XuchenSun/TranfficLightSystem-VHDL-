@@ -25,3 +25,7 @@ S0 to S7 is for loop
       Right side horizontal: 1 Red light, 1 Yellow light, 1 Green light.
       Left side vertical:    1 Red light, 1 Yellow light, 1 Green light.
       Right side horicontal: 1 Red light, 1 Yellow light, 1 Green light.
+
+
+      Left side vertical red-light : Y_red_l_o    
+      Y means Versital, l means left and o means output.
