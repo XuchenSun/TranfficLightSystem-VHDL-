@@ -1,0 +1,464 @@
+----------------------------------------------------------------------------------
+-- Project Name:   Traffic light system
+
+-- Group Member Name:    Yixuan Liang, Rui Sun, Xuchen Sun
+
+
+
+----------------------------------------------------------------------------------
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;   
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity TRAFFIC_LED is
+port(
+-- Inputs
+    clk_in          :   in std_logic;       --50Hz clock
+    rst_n           :   in std_logic;       --Reset input with active 0
+    key_X_l_i       :   in std_logic;       --Left side horizontal pedestrian-push button
+    key_X_r_i       :   in std_logic;       --Right side horizontal pedestrian-push button
+    key_Y_l_i       :   in std_logic;       --Left side vertical pedestrian-push button
+    key_Y_r_i       :   in std_logic;       --Right side vertical pedestrian-push button
+    
+--Outputs
+    X_red_l_o       :   out std_logic;      --Left side horizontal reg-light
+    X_green_l_o     :   out std_logic;      --Left side horizontal green-light
+    X_yellow_l_o    :   out std_logic;      --Left side horizontal yellow-light
+    X_red_r_o       :   out std_logic;      --Right side horizontal reg-light
+    X_green_r_o     :   out std_logic;      --Right side horizontal green-light
+    X_yellow_r_o    :   out std_logic;      --Right side horizontal yellow-light
+
+    Y_red_l_o       :   out std_logic;      --Left side vertical reg-light
+    Y_green_l_o     :   out std_logic;      --Left side vertical green-light
+    Y_yellow_l_o    :   out std_logic;      --Left side vertical yellow-light
+    Y_red_r_o       :   out std_logic;      --Right side vertical reg-light
+    Y_green_r_o     :   out std_logic;      --Right side vertical green-light
+    Y_yellow_r_o    :   out std_logic       --Right side vertical yellow-light
+    
+);
+end TRAFFIC_LED;
+
+architecture Behavioral of TRAFFIC_LED is
+
+constant    time_5s      :   integer  := 4  ;
+constant    time_15s     :   integer  := 14 ;
+constant    time_20s     :   integer  := 19 ;
+constant    time_40s     :   integer  := 39 ;
+constant    time_50s     :   integer  := 49 ;
+constant    time_70s     :   integer  := 69 ;
+
+signal  div_cnt     :   integer range 0 to 25;
+signal  clk_div     :   std_logic;
+signal  clk_1Hz     :   std_logic;
+
+--The flip-flops used to save the status of the pedestrain-push buttons
+signal  key_X_l_i_ff    :   std_logic   ;
+signal  key_X_l_i_ff1   :   std_logic   ;
+signal  key_X_l_i_ff2   :   std_logic   ;
+signal  key_X_r_i_ff    :   std_logic   ;
+signal  key_X_r_i_ff1   :   std_logic   ;
+signal  key_X_r_i_ff2   :   std_logic   ;
+signal  key_Y_l_i_ff    :   std_logic   ;
+signal  key_Y_l_i_ff1   :   std_logic   ;
+signal  key_Y_l_i_ff2   :   std_logic   ;
+signal  key_Y_r_i_ff    :   std_logic   ;
+signal  key_Y_r_i_ff1   :   std_logic   ;
+signal  key_Y_r_i_ff2   :   std_logic   ;
+
+--Status definition
+type state is (IDLE,S0,S1,S2,S3,S4,S5,S6,S7);
+signal  traffic_state : state;
+signal  traffic_state_ff : state;
+signal  time_cnt    :   integer range 0 to 1000;
+
+signal      X_red_l       :    std_logic;
+signal      X_green_l     :    std_logic;
+signal      X_yellow_l    :    std_logic;
+signal      X_red_r       :    std_logic;
+signal      X_green_r     :    std_logic;
+signal      X_yellow_r    :    std_logic;
+signal      Y_red_l       :    std_logic;
+signal      Y_green_l     :    std_logic;
+signal      Y_yellow_l    :    std_logic;
+signal      Y_red_r       :    std_logic;
+signal      Y_green_r     :    std_logic;
+signal      Y_yellow_r    :    std_logic;
+
+begin
+
+    process(clk_in)
+    begin
+        if rising_edge(clk_in) then
+            if (rst_n ='0') then
+                div_cnt <= 0;
+                clk_div <= '0';
+            else
+                if (div_cnt = 24) then
+                    clk_div <= not clk_div;
+                    div_cnt <= 0;
+                else
+                    div_cnt <= div_cnt + 1;
+                    clk_div <= clk_div;
+                end if;
+            end if;
+            clk_1Hz <= clk_div;
+        end if;
+    end process;
+    
+    process(clk_1Hz)
+    begin
+        if rising_edge(clk_1Hz) then
+            if (rst_n = '0') then 
+                key_X_l_i_ff1   <= '0' ;
+                key_X_l_i_ff2   <= '0' ;
+                key_X_r_i_ff1   <= '0' ;
+                key_X_r_i_ff2   <= '0' ;
+                key_Y_l_i_ff1   <= '0' ;
+                key_Y_l_i_ff2   <= '0' ;
+                key_Y_r_i_ff1   <= '0' ;
+                key_Y_r_i_ff2   <= '0' ;        
+            else
+                key_X_l_i_ff1   <= key_X_l_i        ;
+                key_X_l_i_ff2   <= key_X_l_i_ff1    ;
+                key_X_r_i_ff1   <= key_X_r_i        ;
+                key_X_r_i_ff2   <= key_X_r_i_ff1    ;
+                key_Y_l_i_ff1   <= key_Y_l_i        ;
+                key_Y_l_i_ff2   <= key_Y_l_i_ff1    ;
+                key_Y_r_i_ff1   <= key_Y_r_i        ;
+                key_Y_r_i_ff2   <= key_Y_r_i_ff1    ;
+            end if;
+        end if;
+    end process;
+    
+
+    
+    process(clk_1Hz)
+    begin
+        if rising_edge(clk_1Hz) then
+            if (rst_n = '0') then
+                key_X_l_i_ff    <=  '0';
+            elsif ((key_X_l_i_ff1 = '1') and (key_X_l_i_ff2 = '0')) then
+                key_X_l_i_ff    <=  '1';
+            elsif ((traffic_state = S1) and (time_cnt = 0)) then
+                key_X_l_i_ff    <=  '0';
+            end if;
+        end if;
+    end process;
+    
+    process(clk_1Hz)
+    begin
+        if rising_edge(clk_1Hz) then
+            if (rst_n = '0') then
+                key_X_r_i_ff    <=  '0';
+            elsif ((key_X_r_i_ff1 = '1') and (key_X_r_i_ff2 = '0')) then
+                key_X_r_i_ff    <=  '1';
+            elsif ((traffic_state = S1) and (time_cnt = 0)) then
+                key_X_r_i_ff    <=  '0';
+            end if;
+        end if;
+    end process;
+    
+    process(clk_1Hz)
+    begin
+        if rising_edge(clk_1Hz) then
+            if (rst_n = '0') then
+                key_Y_l_i_ff    <=  '0';
+            elsif ((key_Y_l_i_ff1 = '1') and (key_Y_l_i_ff2 = '0')) then
+                key_Y_l_i_ff    <=  '1';
+            elsif ((traffic_state = S5) and (time_cnt = 0))then
+                key_Y_l_i_ff    <=  '0';
+            end if;
+        end if;
+    end process;
+    
+    process(clk_1Hz)
+    begin
+        if rising_edge(clk_1Hz) then
+            if (rst_n = '0') then
+                key_Y_r_i_ff    <=  '0';
+            elsif ((key_Y_r_i_ff1 = '1') and (key_Y_r_i_ff2 = '0')) then
+                key_Y_r_i_ff    <=  '1';
+            elsif ((traffic_state = S5) and (time_cnt = 0))then
+                key_Y_r_i_ff    <=  '0';
+            end if;
+        end if;
+    end process;
+    
+    
+     process(clk_1Hz)
+    begin  
+
+--In IDLE state, all the lights are red. 
+            if (rst_n = '0') then
+                X_red_l     <=  '1';
+                X_red_r     <=  '1';
+                X_green_l   <=  '0';
+                X_green_r   <=  '0';
+                X_yellow_l  <=  '0'; 
+                X_yellow_r  <=  '0';
+                Y_red_l     <=  '1';
+                Y_red_r     <=  '1';
+                Y_green_l   <=  '0';
+                Y_green_r   <=  '0';
+                Y_yellow_l  <=  '0';
+                Y_yellow_r  <=  '0';
+                traffic_state   <=  IDLE;
+            elsif rising_edge(clk_1Hz) then 
+                case traffic_state is
+                    when IDLE =>
+                        time_cnt        <=  time_15s;
+                        traffic_state   <=  S0;
+
+--Right side horizontal green-light, left side horizontal red-light
+--Right side vertical red-light, left side vertical green-light
+--Lasts for 15 seconds
+                    when S0 =>
+                        X_red_r     <=  '0';
+                        X_green_r   <=  '1';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '1';                        
+                        X_green_l   <=  '0';                        
+                        X_yellow_l  <=  '0';
+                         
+                        Y_red_r     <=  '1';
+                        Y_green_r   <=  '0';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '0';                        
+                        Y_green_l   <=  '1';                        
+                        Y_yellow_l  <=  '0';
+                        
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_5s;
+                            traffic_state   <=  S1;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S0;
+                        end if;
+
+--Right side horizontal green-light, left side horizontal red-light
+--Right side vertical red-light, left side vertical yellow-light
+--Lasts for 5 seconds
+                    when S1 =>
+                        X_red_r     <=  '0';
+                        X_green_r   <=  '1';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '1';                        
+                        X_green_l   <=  '0';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '1';
+                        Y_green_r   <=  '0';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '0';
+                        Y_green_l   <=  '0';                        
+                        Y_yellow_l  <=  '1';
+                        
+                        if (time_cnt = 0) then
+                            if ((key_X_l_i_ff = '1') or (key_X_r_i_ff = '1')) then
+                                time_cnt        <=  time_70s;
+                            else
+                                time_cnt        <=  time_40s;
+                            end if;
+                            traffic_state   <=  S2;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S1;
+                        end if;
+
+--Right side horizontal green-light, left side horizontal green-light
+--Right side vertical red-light, left side vertical red-light
+--Lasts for 40 seconds or 70 seconds, depending on the pedestriab-push button
+                    when S2 =>
+                        X_red_r     <=  '0';
+                        X_green_r   <=  '1';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '0';                        
+                        X_green_l   <=  '1';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '1';
+                        Y_green_r   <=  '0';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '1';
+                        Y_green_l   <=  '0';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_5s;
+                            traffic_state   <=  S3;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S2;
+                        end if;
+
+--Right side horizontal yellow-light, left side horizontal green-light
+--Right side vertical red-light, left side vertical red-light
+--Lasts for 5 seconds
+                    when S3 =>
+                        X_red_r     <=  '0';
+                        X_green_r   <=  '0';
+                        X_yellow_r  <=  '1';
+                        
+                        X_red_l     <=  '0';                        
+                        X_green_l   <=  '1';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '1';
+                        Y_green_r   <=  '0';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '1';
+                        Y_green_l   <=  '0';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_15s;
+                            traffic_state   <=  S4;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S3;
+                        end if;
+
+--Right side horizontal red-light, left side horizontal green-light
+--Right side vertical green-light, left side vertical red-light
+--Lasts for 15 seconds
+                    when S4 =>
+                        X_red_r     <=  '1';
+                        X_green_r   <=  '0';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '0';                        
+                        X_green_l   <=  '1';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '0';
+                        Y_green_r   <=  '1';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '1';
+                        Y_green_l   <=  '0';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_5s;
+                            traffic_state   <=  S5;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S4;
+                        end if;
+
+--Right side horizontal red-light, left side horizontal yellow-light
+--Right side vertical green-light, left side vertical red-light
+--Lasts for 5 seconds
+                    when S5 =>
+                        X_red_r     <=  '1';
+                        X_green_r   <=  '0';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '0';                        
+                        X_green_l   <=  '0';                        
+                        X_yellow_l  <=  '1';
+                                                                        
+                        Y_red_r     <=  '0';
+                        Y_green_r   <=  '1';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '1';
+                        Y_green_l   <=  '0';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            if ((key_Y_l_i_ff = '1') or (key_Y_r_i_ff = '1')) then
+                                time_cnt        <=  time_50s;
+                            else
+                                time_cnt        <=  time_20s;
+                            end if;
+                            traffic_state   <=  S6;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S5;
+                        end if;
+
+--Right side horizontal red-light, left side horizontal red-light
+--Right side vertical green-light, left side vertical green-light
+--Lasts for 20 seconds or 50 seconds, depending on the pedestriab-push button
+                    when S6 =>
+                        X_red_r     <=  '1';
+                        X_green_r   <=  '0';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '1';                        
+                        X_green_l   <=  '0';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '0';
+                        Y_green_r   <=  '1';
+                        Y_yellow_r  <=  '0';
+                        
+                        Y_red_l     <=  '0';
+                        Y_green_l   <=  '1';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_5s;
+                            traffic_state   <=  S7;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S6;
+                        end if;
+
+--Right side horizontal red-light, left side horizontal red-light
+--Right side vertical yellow-light, left side vertical green-light
+--Lasts for 5 seconds
+                    when S7 =>
+                        X_red_r     <=  '1';
+                        X_green_r   <=  '0';
+                        X_yellow_r  <=  '0';
+                        
+                        X_red_l     <=  '1';                        
+                        X_green_l   <=  '0';                        
+                        X_yellow_l  <=  '0';
+                                                                        
+                        Y_red_r     <=  '0';
+                        Y_green_r   <=  '0';
+                        Y_yellow_r  <=  '1';
+                        
+                        Y_red_l     <=  '0';
+                        Y_green_l   <=  '1';                        
+                        Y_yellow_l  <=  '0';
+                        if (time_cnt = 0) then
+                            time_cnt        <=  time_15s;
+                            traffic_state   <=  IDLE;
+                        else
+                            time_cnt        <=  time_cnt - 1;
+                            traffic_state   <=  S7;
+                        end if;
+                    when others =>
+                        traffic_state   <=  S0;
+                end case;
+            end if;
+    end process; 
+    
+    X_red_l_o       <=  X_red_l   ;  
+    X_green_l_o     <=  X_green_l ;
+    X_yellow_l_o    <=  X_yellow_l;
+    X_red_r_o       <=  X_red_r   ;
+    X_green_r_o     <=  X_green_r ;
+    X_yellow_r_o    <=  X_yellow_r;            
+    Y_red_l_o       <=  Y_red_l   ;
+    Y_green_l_o     <=  Y_green_l ;
+    Y_yellow_l_o    <=  Y_yellow_l;
+    Y_red_r_o       <=  Y_red_r   ;
+    Y_green_r_o     <=  Y_green_r ;
+    Y_yellow_r_o    <=  Y_yellow_r;
+    
+    
+    
+    
+    
+
+end Behavioral;
+
