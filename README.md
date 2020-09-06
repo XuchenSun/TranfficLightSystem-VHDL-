@@ -8,7 +8,7 @@
 IDLE state is for installing this system.
 S0 to S7 is for loop
 
-**7 input：**
+**6 input：**
       Y means vertical and X means horizontal.
       l and r means left and right.
       The last i means input signal.
